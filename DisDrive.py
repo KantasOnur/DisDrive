@@ -1,5 +1,5 @@
 ATTACHMENT_SIZE = 25000000
-TOKEN = 'MTE4ODIxMzIxMjM1MzY3OTQyMA.GeeHbn.EWsMPRrLRQNfnj5ceIRE-LVrpuSDqsc6R0ZNLQ'
+TOKEN = 'MTE4ODIxMzIxMjM1MzY3OTQyMA.G6QnLC.ZIc7H2oHCmIoHv3bG0Kgf1yOruZ6L3IlC8RuYs'
 
 
 def readFile(path):
@@ -28,7 +28,7 @@ def chunkifyFile(contents, fileName, size, numFiles):
     for chunkNum in range(numFiles):
 
         chunkContents = contents[firstByte:lastByte]
-        contents = contents[lastByte:size]
+        contents = contents[lastByte:size]  # slice the recently read bytes
         chunkFile = writeChunkFile(fileName, chunkNum, chunkContents)
 
         with open(chunkFile, "rb") as file:
@@ -41,43 +41,52 @@ def chunkifyFile(contents, fileName, size, numFiles):
     return filesToSend
 
 
+def fileExists(con, fileName, size):
+    cur = con.cursor()
+    res = cur.execute(f"""SELECT * FROM files WHERE filename='{fileName}'""")
+    if res.fetchone() is None:
+        print("inserted")
+        params = (fileName, size)
+        cur.execute(f"""INSERT INTO files VALUES(?, ?, NULL, NULL)""", params)
+        con.commit()
+        return False
+
+    return True
+
 def main():
     client = commands.Bot(command_prefix='!', intents=discord.Intents.all())
-
-    # contents = readFile()
-    #
-    # fileName = sys.argv[1].split('/')[-1]
-    #
-    # size = len(contents)
-    # numFiles = ceil(size / ATTACHMENT_SIZE)
-    #
-    # out = chunkifyFile(contents, fileName, size, numFiles)
+    con = sqlite3.connect("files.db")
+    cur = con.cursor()
 
     @client.event
     async def on_ready():
         print("The bot is ready to use!")
 
     @client.command(pass_context=True)
-    async def hello(ctx, path):
-        contents = readFile(path)
+    async def upload(ctx, path):
         fileName = path.split('/')[-1]
+        contents = readFile(path)
         size = len(contents)
-        numFiles = ceil(size / ATTACHMENT_SIZE)
 
-        out = chunkifyFile(contents, fileName, size, numFiles)
-        await ctx.send(files=out)
+        if fileExists(con, fileName, size):
+            await ctx.send("File already exists!")
+            return
 
-        for chunkNum in range(numFiles):
+        numChunks = ceil(size / ATTACHMENT_SIZE)
+
+        out = chunkifyFile(contents, fileName, size, numChunks)
+        await ctx.send(fileName, files=out)
+
+        for chunkNum in range(numChunks):
             os.remove(f"{fileName.split('.')[0]}_{chunkNum}.txt")
 
     client.run(TOKEN)
 
 
 if __name__ == "__main__":
+    import sqlite3
     import os
     import discord
     from discord.ext import commands
     from math import ceil
-    import sys
-
     main()
