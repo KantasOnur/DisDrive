@@ -1,5 +1,5 @@
 ATTACHMENT_SIZE = 25000000
-TOKEN = 'MTE4ODIxMzIxMjM1MzY3OTQyMA.G6QnLC.ZIc7H2oHCmIoHv3bG0Kgf1yOruZ6L3IlC8RuYs'
+TOKEN = 'MTE4ODIxMzIxMjM1MzY3OTQyMA.GHHpwM.s_2Fm9ND0vDpdFuGtRD2WW6GHEEsr9gpfu2TCQ'
 
 
 def readFile(path):
@@ -41,17 +41,23 @@ def chunkifyFile(contents, fileName, size, numFiles):
     return filesToSend
 
 
-def fileExists(con, fileName, size):
+def insertToDb(con, fileName, size):
     cur = con.cursor()
-    res = cur.execute(f"""SELECT * FROM files WHERE filename='{fileName}'""")
-    if res.fetchone() is None:
-        print("inserted")
-        params = (fileName, size)
-        cur.execute(f"""INSERT INTO files VALUES(?, ?, NULL, NULL)""", params)
-        con.commit()
-        return False
+    print("inserted")
+    params = (fileName, size)
+    cur.execute(f"INSERT INTO files VALUES(?, ?, NULL, NULL)", params)
+    con.commit()
 
+
+def fileExists(cur, fileName):
+    res = cur.execute(f"SELECT * FROM files WHERE filename='{fileName}'")
+    if res.fetchone() is None:
+        return False
     return True
+
+def insertMessageId(con,cur,message,fileName):
+    cur.execute(f"""UPDATE files SET messageid = ? WHERE filename = ?""", (message.id, fileName))
+    con.commit()
 
 def main():
     client = commands.Bot(command_prefix='!', intents=discord.Intents.all())
@@ -68,17 +74,31 @@ def main():
         contents = readFile(path)
         size = len(contents)
 
-        if fileExists(con, fileName, size):
+        if fileExists(con, fileName):
             await ctx.send("File already exists!")
             return
 
+        insertToDb(con, fileName, size)
         numChunks = ceil(size / ATTACHMENT_SIZE)
 
         out = chunkifyFile(contents, fileName, size, numChunks)
-        await ctx.send(fileName, files=out)
+        await ctx.send(f"UPLOADING {fileName} DO NOT EXECUTE ANY OTHER COMMAND!")
+        message = await ctx.send(fileName, files=out)
+        insertMessageId(con, cur, message, fileName)
 
         for chunkNum in range(numChunks):
-            os.remove(f"{fileName.split('.')[0]}_{chunkNum}.txt")
+            os.remove(f"{fileName.split('.')[0]}_{chunkNum}.txt")  # clean-up the chunk files
+
+    @client.command(pass_context=True)
+    async def download(ctx, fileName, size):
+
+        if fileExists(cur, fileName):
+            res = cur.execute(f"SELECT messageid FROM files WHERE filename=?", [fileName])
+            messageid = res.fetchone()[0]
+            message = await ctx.fetch_message(messageid)
+            print(message.attachments[0])
+
+
 
     client.run(TOKEN)
 
