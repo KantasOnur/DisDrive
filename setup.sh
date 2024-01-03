@@ -22,6 +22,9 @@ pip3 install Flask
 # Upgrade certifi
 pip3 install --upgrade certifi
 
+# Compile the c program
+gcc -o run run.c 
+
 echo -e "${GREEN}Installation and upgrades complete!${NC}"
 
 # Prompt user for Discord channel ID and bot token
