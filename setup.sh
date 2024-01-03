@@ -22,6 +22,10 @@ pip3 install Flask
 # Upgrade certifi
 pip3 install --upgrade certifi
 
+# Install node modules 
+cd client && npm install
+cd ..
+
 # Compile the c program
 gcc -o run run.c 
 
