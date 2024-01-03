@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 
 char* server[] = {"sh", "-c", "cd flask-backend && python3 server.py", NULL};
 char* bot[] = {"sh", "-c", "cd flask-backend && python3 DisDrive.py", NULL};
@@ -31,6 +29,7 @@ int main(){
     for(int i = 0; i < 3; i++){
         runProgram(programs[i], program_names[i]);
     }
-    readline("Hit enter to exit program.");
+    while(1){
+    }
     exit(0);
 }
